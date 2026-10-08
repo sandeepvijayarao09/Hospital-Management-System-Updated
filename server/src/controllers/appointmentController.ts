@@ -5,6 +5,8 @@ import Appointment, { IAppointment } from '../models/Appointment';
 class AppointmentController extends BaseController<IAppointment> {
     constructor() {
         super(Appointment);
+        // Route handlers are passed unbound, so bind the extra method too.
+        this.updateStatus = this.updateStatus.bind(this);
     }
 
     // Override getAll to include population
@@ -12,7 +14,7 @@ class AppointmentController extends BaseController<IAppointment> {
         try {
             const appointments = await this.model.find()
                 .populate('patientId', 'name')
-                .populate('doctorId', 'name');
+                .populate('doctorId', 'name specialization');
             res.json(appointments);
         } catch (error) {
             this.handleError(res, error);
