@@ -1,58 +1,19 @@
-# Hospital Management System - Frontend
+# Hospital Management System - Client
 
-The frontend user interface for the Hospital Management System, built with React, TypeScript, and Tailwind CSS.
-
-## 📂 Project Structure
+React 19 + TypeScript + Vite + Tailwind CSS. See the [root README](../README.md) for full setup.
 
 ```
-client/
-├── src/
-│   ├── api/            # Axios setup and API calls
-│   ├── components/     # Reusable UI components (Buttons, Modals, etc.)
-│   ├── context/        # React Context (Auth State)
-│   ├── pages/          # Application Pages (Dashboard, Patients, etc.)
-│   ├── App.tsx         # Main App component & Routing
-│   └── main.tsx        # Entry point
-├── public/             # Static assets
-└── package.json        # Dependencies and scripts
+client/src/
+├── api/axios.ts       # Axios instance: attaches the JWT, redirects to /login on 401
+├── context/           # Auth state (persisted in localStorage)
+├── components/        # Layout and UI primitives
+└── pages/             # Login, Dashboard, Patients, Appointments, Billing
 ```
 
-## 🚀 Getting Started
+```bash
+npm install
+npm run dev     # http://localhost:5173, proxies /api to http://localhost:5001
+npm run build
+```
 
-### Prerequisites
-- Node.js (v14+)
-- The backend server must be running on port 5000 (default)
-
-### Installation
-1. Navigate to the client directory:
-   ```bash
-   cd client
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running the Client
-- **Development Server**:
-  ```bash
-  npm run dev
-  ```
-  Access the app at `http://localhost:5173`.
-
-- **Linting**:
-  ```bash
-  npm run lint
-  ```
-
-- **Build for Production**:
-  ```bash
-  npm run build
-  ```
-
-## 🎨 Tech Stack
-- **React**: UI Library
-- **TypeScript**: Static Typing
-- **Tailwind CSS**: Utility-first CSS framework
-- **Vite**: Next Generation Frontend Tooling
-- **React Router**: Client-side routing
+The client reads no environment variables. The API address is set by the dev proxy in `vite.config.ts`.

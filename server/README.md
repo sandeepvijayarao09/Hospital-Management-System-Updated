@@ -1,60 +1,28 @@
-# Hospital Management System - Backend
+# Hospital Management System - Server
 
-The backend API for the Hospital Management System, built with Node.js, Express, and MongoDB.
-
-## 📂 Directory Structure
+Express 5 + Mongoose API. See the [root README](../README.md) for full setup.
 
 ```
 server/
 ├── src/
-│   ├── config/         # Configuration files
-│   ├── controllers/    # Request handlers (Auth, Patients, Appointments, Billing)
-│   ├── models/         # Mongoose Data Models
-│   ├── routes/         # API Route definitions
-│   ├── db.ts           # Database connection logic
-│   ├── index.ts        # Entry point
-│   └── seed.ts         # Database seeding script
-├── .env                # Environment variables (not committed)
-└── package.json        # Dependencies and scripts
+│   ├── app.ts          # Express app (routes + middleware), no listen; imported by tests
+│   ├── index.ts        # Entry point: checks config, connects DB, seeds, listens
+│   ├── config.ts       # Required env (JWT_SECRET) with no fallbacks
+│   ├── db.ts           # MongoDB connection, optional in-memory mode
+│   ├── seed.ts         # Demo users and sample data (dev only)
+│   ├── middleware/     # JWT `protect` middleware
+│   ├── controllers/    # Request handlers (BaseController provides CRUD)
+│   ├── models/         # User, Patient, Doctor, Appointment, Billing
+│   └── routes/
+├── tests/              # Vitest + supertest API tests
+└── .env.example
 ```
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js
-- MongoDB
-
-### Installation
-1. Navigate to the server directory:
-   ```bash
-   cd server
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Configuration
-Create a `.env` file in the root of the `server` directory:
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/hospital-management
-JWT_SECRET=your_super_secret_key
+```bash
+npm install
+cp .env.example .env   # set JWT_SECRET
+npm run dev:memory     # in-memory MongoDB + demo data on :5001
+npm run dev            # uses MONGO_URI
+npm test               # API tests
+npm run build && npm start
 ```
-
-### Running the Server
-- **Development Mode** (with nodemon):
-  ```bash
-  npm run dev
-  ```
-- **Production Build**:
-  ```bash
-  npm run build
-  npm start
-  ```
-
-### API Endpoints
-- **Auth**: `POST /api/auth/login`
-- **Patients**: `GET /api/patients`, `POST /api/patients`...
-- **Appointments**: `GET /api/appointments`, `POST /api/appointments`...
-- **Billing**: `GET /api/billing`, `POST /api/billing`...
