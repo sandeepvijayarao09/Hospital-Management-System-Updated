@@ -1,5 +1,7 @@
 # Hospital Management System
 
+[![CI](https://github.com/sandeepvijayarao09/Hospital-Management-System-Updated/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepvijayarao09/Hospital-Management-System-Updated/actions/workflows/ci.yml)
+
 A full-stack MERN app for running a small clinic's front desk: patients, doctors, appointments and billing behind JWT login.
 
 ![Dashboard](docs/screenshots/dashboard.png)
