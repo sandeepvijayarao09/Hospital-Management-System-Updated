@@ -2,16 +2,21 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
+import { getJwtSecret } from '../config';
 
 const generateToken = (id: string) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+    return jwt.sign({ id }, getJwtSecret(), {
         expiresIn: '30d',
     });
 };
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: 'Name, email and password are required' });
+        }
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -28,7 +33,9 @@ export const registerUser = async (req: Request, res: Response) => {
             name,
             email,
             password: hashedPassword,
-            role
+            // Self-registration always creates a patient account; staff roles
+            // are not something a user can grant themselves.
+            role: 'patient'
         });
 
         if (user) {
@@ -51,9 +58,11 @@ export const loginUser = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
 
         const user = await User.findOne({ email });
-
 
         if (user) {
             const isMatch = await bcrypt.compare(password, user.password as string);
