@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
@@ -17,27 +18,29 @@ const Login: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signIn = async (credentials: { email: string; password: string }) => {
     try {
-      const response = await api.post("/auth/login", { email, password });
+      const response = await api.post("/auth/login", credentials);
       login(response.data);
       navigate("/");
-    } catch (err: any) {
-      setError("Invalid credentials");
+    } catch (err) {
+      setError(
+        axios.isAxiosError(err) && err.response?.status === 401
+          ? "Invalid credentials"
+          : "Could not reach the server",
+      );
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    signIn({ email, password });
+  };
+
+  // These accounts are created by the server's dev seed (see server/src/seed.ts)
+  // and do not exist when NODE_ENV=production.
   const handleDemoLogin = (role: "admin" | "doctor" | "patient") => {
-    const demoUser: any = {
-      _id: `demo-${role}`,
-      name: `Demo ${role.charAt(0).toUpperCase() + role.slice(1)}`,
-      email: `${role}@hospital.com`,
-      role: role,
-      token: `demo-token-${role}`,
-    };
-    login(demoUser);
-    navigate("/");
+    signIn({ email: `${role}@hospital.com`, password: role });
   };
 
   return (

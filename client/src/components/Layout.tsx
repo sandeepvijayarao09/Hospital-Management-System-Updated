@@ -97,12 +97,7 @@ const Layout: React.FC = () => {
 
                     {/* Footer */}
                     <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-                        <p>&copy; {new Date().getFullYear()} MediCare Hospital System. All rights reserved.</p>
-                        <div className="mt-2 space-x-4">
-                            <a href="#" className="hover:text-primary-600 transition-colors">Privacy Policy</a>
-                            <a href="#" className="hover:text-primary-600 transition-colors">Terms of Service</a>
-                            <a href="#" className="hover:text-primary-600 transition-colors">Support</a>
-                        </div>
+                        <p>&copy; {new Date().getFullYear()} MediCare Hospital System</p>
                     </footer>
                 </main>
             </div>

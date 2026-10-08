@@ -48,33 +48,8 @@ const Patients: React.FC = () => {
     try {
       const response = await api.get("/patients");
       setPatients(response.data);
-    } catch (error) {
-      setPatients([
-        {
-          _id: "1",
-          name: "John Doe",
-          age: 30,
-          contact: "123-456-7890",
-          gender: "male",
-          address: "123 Main St",
-        },
-        {
-          _id: "2",
-          name: "Jane Smith",
-          age: 25,
-          contact: "987-654-3210",
-          gender: "female",
-          address: "456 Oak Ave",
-        },
-        {
-          _id: "3",
-          name: "Bob Johnson",
-          age: 45,
-          contact: "555-555-5555",
-          gender: "male",
-          address: "789 Pine Ln",
-        },
-      ]);
+    } catch {
+      console.error("Failed to fetch patients");
     } finally {
       setLoading(false);
     }

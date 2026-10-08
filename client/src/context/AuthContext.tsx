@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, type ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, type ReactNode } from 'react';
 
 interface User {
     _id: string;
@@ -18,14 +18,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-
-    useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+    // Read the saved session synchronously so a page refresh doesn't bounce
+    // protected routes to /login before the user is restored.
+    const [user, setUser] = useState<User | null>(() => {
+        try {
+            const storedUser = localStorage.getItem('user');
+            return storedUser ? JSON.parse(storedUser) : null;
+        } catch {
+            return null;
         }
-    }, []);
+    });
 
     const login = (userData: User) => {
         setUser(userData);

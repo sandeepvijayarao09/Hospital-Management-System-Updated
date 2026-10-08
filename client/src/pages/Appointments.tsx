@@ -19,9 +19,9 @@ import { Input, Select } from "../components/ui/Form";
 interface Appointment {
   _id: string;
   patientId: { _id: string; name: string };
-  doctorId: { name: string };
+  doctorId: { _id: string; name: string; specialization: string } | null;
   date: string;
-  status: "confirmed" | "pending" | "cancelled";
+  status: "confirmed" | "pending" | "completed" | "cancelled";
 }
 
 interface Patient {
@@ -29,23 +29,29 @@ interface Patient {
   name: string;
 }
 
+interface Doctor {
+  _id: string;
+  name: string;
+  specialization: string;
+}
+
 const Appointments: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
 
   // Booking Form State
   const [selectedPatientId, setSelectedPatientId] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState(
-    "Dr. Smith (Cardiology)",
-  );
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
 
   useEffect(() => {
     fetchAppointments();
     fetchPatients();
+    fetchDoctors();
   }, []);
 
   const fetchAppointments = async () => {
@@ -53,7 +59,7 @@ const Appointments: React.FC = () => {
       const response = await api.get("/appointments");
       setAppointments(response.data);
     } catch (error) {
-      // Mock data fallback...
+      console.error("Failed to fetch appointments");
     } finally {
       setLoading(false);
     }
@@ -68,16 +74,25 @@ const Appointments: React.FC = () => {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const response = await api.get("/doctors");
+      setDoctors(response.data);
+    } catch (error) {
+      console.error("Failed to fetch doctors");
+    }
+  };
+
   const handleBookAppointment = async () => {
-    if (!selectedPatientId || !selectedDate) {
-      alert("Please select a patient and date.");
+    if (!selectedPatientId || !selectedDoctorId || !selectedDate) {
+      alert("Please select a patient, a doctor and a date.");
       return;
     }
 
     try {
       await api.post("/appointments", {
         patientId: selectedPatientId,
-        doctorId: selectedDoctor, // Sending name/string for simplicity as per current backend, or update backend to handle simple strings if needed. Assuming string for now based on current mock.
+        doctorId: selectedDoctorId,
         date: selectedDate,
         status: "pending",
       });
@@ -86,10 +101,20 @@ const Appointments: React.FC = () => {
 
       // Reset form
       setSelectedPatientId("");
+      setSelectedDoctorId("");
       setSelectedDate("");
     } catch (error) {
       console.error("Error booking appointment:", error);
       alert("Failed to book appointment");
+    }
+  };
+
+  const updateStatus = async (id: string, status: "confirmed" | "cancelled") => {
+    try {
+      await api.put(`/appointments/${id}/status`, { status });
+      fetchAppointments();
+    } catch (error) {
+      alert("Failed to update appointment");
     }
   };
 
@@ -132,6 +157,7 @@ const Appointments: React.FC = () => {
                   <TableHead>Doctor</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </tr>
               </TableHeader>
               <TableBody>
@@ -144,9 +170,9 @@ const Appointments: React.FC = () => {
                         : "Unknown"}
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {typeof appointment.doctorId === "object"
-                        ? appointment.doctorId?.name
-                        : appointment.doctorId}
+                      {appointment.doctorId
+                        ? `${appointment.doctorId.name} (${appointment.doctorId.specialization})`
+                        : "Unknown"}
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {new Date(appointment.date).toLocaleString()}
@@ -155,6 +181,26 @@ const Appointments: React.FC = () => {
                       <Badge variant={getStatusVariant(appointment.status)}>
                         {appointment.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {appointment.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatus(appointment._id, "confirmed")}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => updateStatus(appointment._id, "cancelled")}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -203,15 +249,15 @@ const Appointments: React.FC = () => {
 
           <Select
             label="Doctor"
-            value={selectedDoctor}
-            onChange={(e) => setSelectedDoctor(e.target.value)}
+            value={selectedDoctorId}
+            onChange={(e) => setSelectedDoctorId(e.target.value)}
           >
-            <option value="Dr. Smith (Cardiology)">
-              Dr. Smith (Cardiology)
-            </option>
-            <option value="Dr. Jones (Pediatrics)">
-              Dr. Jones (Pediatrics)
-            </option>
+            <option value="">Select Doctor</option>
+            {doctors.map((d) => (
+              <option key={d._id} value={d._id}>
+                {d.name} ({d.specialization})
+              </option>
+            ))}
           </Select>
 
           <Input

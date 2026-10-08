@@ -52,7 +52,7 @@ const Billing: React.FC = () => {
       const response = await api.get("/billing");
       setInvoices(response.data);
     } catch (error) {
-      // Mock data fallback...
+      console.error("Failed to fetch invoices");
     } finally {
       setLoading(false);
     }

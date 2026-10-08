@@ -1,28 +1,112 @@
-import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
-import { Input, Select } from "../components/ui/Form";
+import { Input } from "../components/ui/Form";
+
+interface Doctor {
+  _id: string;
+  name: string;
+  specialization: string;
+}
+
+interface Appointment {
+  _id: string;
+  patientId: { name: string } | null;
+  doctorId: { name: string } | null;
+  date: string;
+  status: "confirmed" | "pending" | "completed" | "cancelled";
+}
+
+interface Invoice {
+  _id: string;
+  amount: number;
+  status: "paid" | "pending" | "overdue";
+}
+
+const currency = (n: number) =>
+  n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+
+const Stat: React.FC<{ label: string; value: string | number }> = ({
+  label,
+  value,
+}) => (
+  <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+    <span className="block text-3xl font-bold text-primary-600">{value}</span>
+    <span className="text-sm text-gray-600 font-medium">{label}</span>
+  </div>
+);
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<{
-    name: string;
-    role: string;
-  } | null>(null);
-  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [patientCount, setPatientCount] = useState(0);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [isAddDoctorOpen, setIsAddDoctorOpen] = useState(false);
+  const [doctorName, setDoctorName] = useState("");
+  const [specialization, setSpecialization] = useState("");
+
+  const load = async () => {
+    try {
+      const [p, d, a, b] = await Promise.all([
+        api.get("/patients"),
+        api.get("/doctors"),
+        api.get("/appointments"),
+        api.get("/billing"),
+      ]);
+      setPatientCount(p.data.length);
+      setDoctors(d.data);
+      setAppointments(a.data);
+      setInvoices(b.data);
+    } catch {
+      console.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const handleAddDoctor = async () => {
+    if (!doctorName || !specialization) {
+      alert("Please enter a name and specialization.");
+      return;
+    }
+    try {
+      await api.post("/doctors", { name: doctorName, specialization });
+      setIsAddDoctorOpen(false);
+      setDoctorName("");
+      setSpecialization("");
+      load();
+    } catch {
+      alert("Failed to add doctor");
+    }
+  };
+
+  const now = Date.now();
+  const upcoming = appointments
+    .filter((a) => a.status !== "cancelled" && new Date(a.date).getTime() >= now - 60 * 60 * 1000)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const outstanding = invoices
+    .filter((i) => i.status !== "paid")
+    .reduce((sum, i) => sum + i.amount, 0);
 
   return (
     <div>
       <PageHeader title="Dashboard" />
 
-      <Card className="mb-8 bg-gradient-to-r from-primary-50 to-white border-primary-100">
+      <Card className="mb-6 bg-gradient-to-r from-primary-50 to-white border-primary-100">
         <h3 className="text-lg font-semibold mb-2 text-gray-800">
           Welcome Back, {user?.name}
         </h3>
@@ -35,255 +119,105 @@ const Dashboard: React.FC = () => {
         </p>
       </Card>
 
-      {/* ADMIN VIEW */}
-      {user?.role === "admin" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card title="User Access Management">
-            <p className="text-sm text-gray-600 mb-4">
-              Control access levels and manage staff/doctor accounts.
-            </p>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
-                <span className="font-medium text-gray-900">
-                  Dr. Smith{" "}
-                  <span className="text-xs text-gray-500 font-normal">
-                    (Doctor)
-                  </span>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditingUser({ name: "Dr. Smith", role: "doctor" });
-                    setIsEditUserOpen(true);
-                  }}
-                >
-                  Edit
-                </Button>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
-                <span className="font-medium text-gray-900">
-                  Nurse Joy{" "}
-                  <span className="text-xs text-gray-500 font-normal">
-                    (Staff)
-                  </span>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditingUser({ name: "Nurse Joy", role: "staff" });
-                    setIsEditUserOpen(true);
-                  }}
-                >
-                  Edit
-                </Button>
-              </div>
+      {loading ? (
+        <div className="p-8 text-center text-gray-500">Loading...</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Stat label="Patients" value={patientCount} />
+            <Stat label="Doctors" value={doctors.length} />
+            <Stat label="Upcoming appointments" value={upcoming.length} />
+            <Stat label="Outstanding billing" value={currency(outstanding)} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card title="Upcoming Appointments">
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-gray-500">No upcoming appointments.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {upcoming.slice(0, 5).map((a) => (
+                    <li
+                      key={a._id}
+                      className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100"
+                    >
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {a.patientId?.name ?? "Unknown"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {a.doctorId?.name ?? "Unknown"} ·{" "}
+                          {new Date(a.date).toLocaleString()}
+                        </div>
+                      </div>
+                      <Badge variant={a.status === "confirmed" ? "success" : "warning"}>
+                        {a.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <Button
-                className="w-full mt-2"
-                onClick={() => setIsAddUserOpen(true)}
+                variant="outline"
+                className="w-full mt-4"
+                onClick={() => navigate("/appointments")}
               >
-                Add New User
+                All Appointments
               </Button>
-            </div>
-          </Card>
-          <Card title="System Overview">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="p-4 bg-primary-50 rounded-lg border border-primary-100">
-                <span className="block text-3xl font-bold text-primary-600">
-                  12
-                </span>
-                <span className="text-sm text-primary-600 font-medium">
-                  Doctors
-                </span>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <span className="block text-3xl font-bold text-gray-700">
-                  140
-                </span>
-                <span className="text-sm text-gray-600 font-medium">
-                  Patients
-                </span>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Card>
 
-      {/* DOCTOR VIEW */}
-      {user?.role === "doctor" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card title="Today's Tasks">
-            <p className="text-sm text-gray-600 mb-4">
-              Your appointments and rounds for today.
-            </p>
-            <ul className="space-y-3">
-              <li className="flex items-start">
-                <span className="flex-shrink-0 w-2 h-2 mt-2 bg-primary-500 rounded-full mr-3"></span>
-                <span className="text-gray-700">
-                  09:00 AM - Checkup with John Doe
-                </span>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 w-2 h-2 mt-2 bg-primary-500 rounded-full mr-3"></span>
-                <span className="text-gray-700">10:30 AM - Surgery Prep</span>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 w-2 h-2 mt-2 bg-primary-500 rounded-full mr-3"></span>
-                <span className="text-gray-700">02:00 PM - Ward Rounds</span>
-              </li>
-            </ul>
-          </Card>
-          <Card title="Weekly Report">
-            <div className="bg-gray-50 h-32 rounded border border-gray-100 flex items-center justify-center text-gray-400 mb-4">
-              [Chart Placeholder: Patients Treated]
-            </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsReportOpen(true)}
-            >
-              View Detailed Reports
-            </Button>
-          </Card>
-        </div>
-      )}
-
-      {/* PATIENT VIEW */}
-      {user?.role === "patient" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card title="My Reports">
-            <p className="text-sm text-gray-600 mb-4">
-              Access your latest medical test results and history.
-            </p>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
-                <span>Blood Test (Oct 2023)</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => alert("Downloading: Blood Test (Oct 2023)")}
-                >
-                  Download
+            <Card title="Doctors">
+              {doctors.length === 0 ? (
+                <p className="text-sm text-gray-500">No doctors added yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {doctors.map((d) => (
+                    <li
+                      key={d._id}
+                      className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100"
+                    >
+                      <span className="font-medium text-gray-900">{d.name}</span>
+                      <span className="text-xs text-gray-500">{d.specialization}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {user?.role === "admin" && (
+                <Button className="w-full mt-4" onClick={() => setIsAddDoctorOpen(true)}>
+                  Add Doctor
                 </Button>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
-                <span>X-Ray (Sep 2023)</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => alert("Opening Viewer: X-Ray (Sep 2023)")}
-                >
-                  View
-                </Button>
-              </div>
-            </div>
-          </Card>
-          <Card title="Book Appointment">
-            <p className="text-sm text-gray-600 mb-4">
-              Need to see a doctor? Schedule now.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => navigate("/appointments")}
-            >
-              Book New Appointment
-            </Button>
-            <p className="text-xs text-gray-500 mt-3 text-center">
-              Next available:{" "}
-              <span className="font-semibold text-primary-600">
-                Today, 4 PM
-              </span>
-            </p>
-          </Card>
-        </div>
+              )}
+            </Card>
+          </div>
+        </>
       )}
-
-      {/* Modals */}
-      <Modal
-        isOpen={isAddUserOpen}
-        onClose={() => setIsAddUserOpen(false)}
-        title="Add New User"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setIsAddUserOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                alert("User Added (Mock)");
-                setIsAddUserOpen(false);
-              }}
-            >
-              Create User
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Input label="Name" placeholder="e.g. John Smith" />
-          <Select label="Role">
-            <option value="doctor">Doctor</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </Select>
-        </div>
-      </Modal>
 
       <Modal
-        isOpen={isEditUserOpen}
-        onClose={() => setIsEditUserOpen(false)}
-        title="Edit User"
+        isOpen={isAddDoctorOpen}
+        onClose={() => setIsAddDoctorOpen(false)}
+        title="Add Doctor"
         footer={
           <>
-            <Button
-              variant="secondary"
-              onClick={() => setIsEditUserOpen(false)}
-            >
+            <Button variant="secondary" onClick={() => setIsAddDoctorOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                alert("User Updated (Mock)");
-                setIsEditUserOpen(false);
-              }}
-            >
-              Save Changes
-            </Button>
+            <Button onClick={handleAddDoctor}>Add Doctor</Button>
           </>
         }
       >
         <div className="space-y-4">
           <Input
             label="Name"
-            defaultValue={editingUser?.name}
-            placeholder="e.g. John Smith"
+            placeholder="e.g. Dr. Jane Smith"
+            value={doctorName}
+            onChange={(e) => setDoctorName(e.target.value)}
           />
-          <Select label="Role" defaultValue={editingUser?.role}>
-            <option value="doctor">Doctor</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </Select>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        title="Weekly Report Details"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Detailed performance metrics for the current week.
-          </p>
-          <div className="bg-gray-50 p-4 rounded border border-gray-100">
-            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-              <li>Total Patients: 45</li>
-              <li>Surgeries Performed: 3</li>
-              <li>Consultations: 32</li>
-              <li>Emergency Cases: 10</li>
-            </ul>
-          </div>
+          <Input
+            label="Specialization"
+            placeholder="e.g. Cardiology"
+            value={specialization}
+            onChange={(e) => setSpecialization(e.target.value)}
+          />
         </div>
       </Modal>
     </div>
